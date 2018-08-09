@@ -4,7 +4,6 @@ wd()
 setwd("MOOCs/R/Coursera/AdvancedRProgramming")
 library(readr)
 library(dplyr)
-library(quanteda)
 
 ## Download data from RStudio (if we haven't already)
 if(!file.exists("data/2016-07-20.csv.gz")) {
@@ -37,7 +36,7 @@ num_download <- function(pkgname, date) {
   cran %>% filter(package == pkgname) %>% nrow
 }
 
-num_download("quanteda", "2018-08-01")
+num_download("quanteda", "2016-07-20")
 
 num_download <- function(pkgname, date = "2016-07-20") { #ici une valeur par défaut pour la date est bien spécifiée, si non renseignée par l'utilisateur
   year <- substr(date, 1, 4)
@@ -51,3 +50,54 @@ num_download <- function(pkgname, date = "2016-07-20") { #ici une valeur par dé
 }
 
 num_download("Rcpp")
+
+check_for_logfile <- function(date) { #création d'une fonction intermédiaire qui sert à DL / créer le fichier et son chemin si DL il y a
+  year <- substr(date, 1, 4)
+  src <- sprintf("http://cran-logs.rstudio.com/%s/%s.csv.gz",
+                 year, date)
+  dest <- file.path("data", basename(src))
+  if(!file.exists(dest)) {
+    val <- download.file(src, dest, quiet = TRUE)
+    if(!val)# ajout d'un check si dl a bien pu se faire si jamais il est souhaité
+      stop("unable to download file ", src) #print un message d'erreur au besoin
+  }
+  dest
+}
+
+num_download <- function(pkgname, date = "2016-07-20") {
+  dest <- check_for_logfile(date)
+  cran <- read_csv(dest, col_types = "ccicccccci", progress = FALSE)
+  cran %>% filter(package == pkgname) %>% nrow
+}   
+
+####check dependencies
+check_pkg_deps <- function() {
+  if(!require(readr)) {#check si le package est installé, et si non, lance l'install (ici un "require(readr)" retourne TRUE car package déjà installé... donc il faut l'inverse pour remplir la condition du if)
+    message("installing the 'readr' package")
+    install.packages("readr")
+  }
+  if(!require(dplyr))
+    stop("the 'dplyr' package needs to be installed first")
+}
+
+num_download <- function(pkgname, date = "2016-07-20") { #Now, our updated function can check for package dependencies.
+  check_pkg_deps()
+  dest <- check_for_logfile(date)
+  cran <- read_csv(dest, col_types = "ccicccccci", progress = FALSE)
+  cran %>% filter(package == pkgname) %>% nrow
+}
+
+#####Vectorization
+## 'pkgname' can now be a character vector of names
+num_download <- function(pkgname, date = "2016-07-20") {
+  check_pkg_deps()
+  dest <- check_for_logfile(date)
+  cran <- read_csv(dest, col_types = "ccicccccci", progress = FALSE)
+  cran %>% filter(package %in% pkgname) %>% #Use a group_by() %>% summarize() combination to count the downloads for each package.
+    group_by(package) %>%
+    summarize(n = n())
+}    
+
+num_download(c("filehash", "weathermetrics", "quanteda"))
+
+#####argument checking https://www.coursera.org/learn/advanced-r/supplement/hhLfz/argument-checking
