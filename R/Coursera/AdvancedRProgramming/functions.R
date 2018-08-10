@@ -100,4 +100,22 @@ num_download <- function(pkgname, date = "2016-07-20") {
 
 num_download(c("filehash", "weathermetrics", "quanteda"))
 
-#####argument checking https://www.coursera.org/learn/advanced-r/supplement/hhLfz/argument-checking
+#####argument checking
+num_download <- function(pkgname, date = "2016-07-20") {
+  check_pkg_deps()
+  
+  ## Check arguments
+  if(!is.character(pkgname))
+    stop("'pkgname' should be character")
+  if(!is.character(date))
+    stop("'date' should be character")
+  if(length(date) != 1)
+    stop("'date' should be length 1")
+  
+  dest <- check_for_logfile(date)
+  cran <- read_csv(dest, col_types = "ccicccccci", 
+                   progress = FALSE)
+  cran %>% filter(package %in% pkgname) %>% 
+    group_by(package) %>%
+    summarize(n = n())
+}    
